@@ -3,10 +3,11 @@ import Recommendations from './components/recommendations'
 import './App.css';
 
 import SpotifyWebApi from 'spotify-web-api-js';
+import { unwatchFile } from 'fs';
 const spotifyApi = new SpotifyWebApi();
 
 class App extends Component {
-  constructor(){
+  constructor() {
     super();
     const params = this.getHashParams();
     const token = params.access_token;
@@ -17,249 +18,155 @@ class App extends Component {
       loggedIn: token ? true : false,
       recommendations: [],
       topTracks: [],
-      topArtists: []
+      topArtists: [],
+      maxPopularity: 50
     }
+    this.handleChange = this.handleChange.bind(this);
   }
+
+  handleChange(event) {
+    this.setState({maxPopularity: event.target.value});
+  }
+
   getHashParams() {
     var hashParams = {};
     var e, r = /([^&;=]+)=?([^&;]*)/g,
-        q = window.location.hash.substring(1);
+      q = window.location.hash.substring(1);
     e = r.exec(q)
     while (e) {
-       hashParams[e[1]] = decodeURIComponent(e[2]);
-       e = r.exec(q);
+      hashParams[e[1]] = decodeURIComponent(e[2]);
+      e = r.exec(q);
     }
     return hashParams;
   }
 
 
-  getRecommendedTracks(songIds){
-    var smallerSongIds = this.getSmallList(songIds, 5)
-    spotifyApi.getRecommendations({seed_tracks: smallerSongIds.join(','), max_popularity: '25', limit: 20})
-      .then((response) => {
-        return JSON.parse(JSON.stringify(response))
-      });
-  }
 
-
-  // Spotify can only take 5 seeds
-  // This randomly selects 5 seeds from the array
-  getSmallList(arr, n) {
-    var result = new Array(n),
-        len = arr.length,
-        taken = new Array(len);
-    if (n > len)
-        throw new RangeError("getRandom: more elements taken than available");
-    while (n--) {
-        var x = Math.floor(Math.random() * len);
-        result[n] = arr[x in taken ? taken[x] : x];
-        taken[x] = --len in taken ? taken[len] : len;
-    }
-    return result;
-  }
-
-
-  // Replace all the existing tracks in the playlist with the new recommendations
-  replacePlaylist(recommendations){
-    spotifyApi.replaceTracksInPlaylist('4oIlq0CsjISPnaQ03nXqoh', this.getTrackUris(recommendations))
-      .then((response) => {
-      });
-  }
 
   // Returns the uris of the tracks to be put in the playlist
-  getTrackUris(recommendations){
+  getTrackUris(recommendations) {
     var trackUris = []
-    recommendations.forEach(function(track) {
+    recommendations.forEach(function (track) {
       trackUris.push(track.uri)
     });
     return trackUris
   }
 
-  // Returns an array of the ids for the user's top songs/artists
-  getIds(data){
-    var ids = []
-    data.items.forEach(function(object) {
-      ids.push(object.id)
-    });
-    return ids
-  }
-
-  removePopularArtists(){
-    var artistIdList = []
-    this.state.recommendations.forEach(function(object) {
-      artistIdList.push(object.artists[0].id)
-    });
-
-    let unique = [...new Set(artistIdList)];
-    unique.length=50
-
-    spotifyApi.getArtists(unique)
-    .then((response) => {
-      var artistList = JSON.parse(JSON.stringify(response))
-      var unpopularArtists = []
-      artistList.artists.forEach(function(artist) {
-        if (artist.popularity < 50) {
-          unpopularArtists.push(artist)
-        }
+  //4oIlq0CsjISPnaQ03nXqoh
+  // Replace all the existing tracks in the playlist with the new recommendations
+  replacePlaylist(playlist, recommendations) {
+    spotifyApi.replaceTracksInPlaylist(playlist, this.getTrackUris(recommendations))
+      .then((response) => {
       });
-
-      var test = []
-      unpopularArtists.forEach(function(artist) {
-        spotifyApi.getArtistTopTracks(artist.id, 'US')
-        .then((response) => {
-          test.push(JSON.parse(JSON.stringify(response.tracks[0])))
-        })
-      })
-      this.setState({recommendations: [test]})
-    })
-    
-
   }
 
-  // getRecommendations(typeForGeneration){
-  //   spotifyApi.getMyTopTracks({time_range: 'short_term'})
-  //   .then((response) => {
-  //     var ids = this.getIds(JSON.parse(JSON.stringify(response)))
-  //     this.setState({topTracks: ids})
+  // Returns track recommendations from genres
+  getUsersTopTrack(time_range) {
+    // return this.getUsersTopGenres()
+    // .then((response) => {
+    //   return response
+    // })
+    // .then((response) => {
+    //   console.log(response.join(','))
+    //   return spotifyApi.getRecommendations({ seed_genres: response.join(','), max_popularity: '10', limit: 50 });
+    // })
+    return spotifyApi.getRecommendations({ seed_genres: 'indie,indie-pop,folk', max_popularity: this.state.maxPopularity, limit: 50 });
+  }
 
-  //     if (this.state.topTracks == null) {
-  //       return null;
-  //     }
-  //     else {
-  //       var smallerSongIds = this.getSmallList(ids, 5)
-  //       spotifyApi.getRecommendations({seed_genres: 'indie,indie-pop,folk', max_popularity: '10', limit: 100})
-  //       .then((response) => {
-  //         this.setState({recommendations: JSON.parse(JSON.stringify(response)).tracks})
-  //         var artistIdList = []
-  //         this.state.recommendations.forEach(function(object) {
-  //           artistIdList.push(object.artists[0].id)
-  //         });
-      
-  //         let unique = [...new Set(artistIdList)];
-  //         unique.length=50
-      
-  //         spotifyApi.getArtists(unique)
-  //         .then((response) => {
-  //           var artistList = JSON.parse(JSON.stringify(response))
-  //           var unpopularArtists = []
-  //           artistList.artists.forEach(function(artist) {
-  //             if (artist.popularity < 50) {
-  //               unpopularArtists.push(artist)
-  //             }
-  //           });
-  //           var test = []
-  //           unpopularArtists.forEach(function(artist) {
-  //             spotifyApi.getArtistTopTracks(artist.id, 'US')
-  //             .then((response) => {
-  //               test.push(JSON.parse(JSON.stringify(response.tracks[0])))
-  //             })
-  //           })
-  //           console.log(test)
-  //           this.setState({recommendations: [test]})
-  //         })
-  //       });
-  //     }
-  //   });
-  // }
+  getArtistsFromRecommendations(recommendations) {
+    var artists = []
+    recommendations.forEach(function (recommendation) {
+      artists.push(recommendation.artists[0].id)
+    });
+    let uniqueArtists = [...new Set(artists)];
+    return uniqueArtists
+  }
 
-  // getRecommendations(){
-  //   spotifyApi.getMyTopTracks({time_range: 'short_term'})
-  //   .then((response) => {
-  //     return spotifyApi.getRecommendations({seed_genres: 'indie,indie-pop,folk', max_popularity: '10', limit: 100})
-  //   })
-  //   .then((response) => {
-  //     this.setState({recommendations: JSON.parse(JSON.stringify(response)).tracks})
-  //     var artistIdList = []
-  //     this.state.recommendations.forEach(function(object) {
-  //       artistIdList.push(object.artists[0].id)
-  //     });
-  
-  //     let unique = [...new Set(artistIdList)];
-  //     unique.length=50
+  // Get list of artists with popularity less than the popularity variable
+  getUnpopularArtists(artists, popularity) {
+    var unpopularArtists = []
+    artists.artists.forEach(function (artist) {
+      if (artist.popularity < popularity) {
+        unpopularArtists.push(artist)
+      }
+    });
+    return unpopularArtists
+  }
 
-  //     return spotifyApi.getArtists(unique)
-  //   })
-  //   .then((response) => {
-  //     var artistList = JSON.parse(JSON.stringify(response))
-  //     var unpopularArtists = []
-  //     artistList.artists.forEach(function(artist) {
-  //       if (artist.popularity < 50) {
-  //         unpopularArtists.push(artist)
-  //       }
-  //     });
+  // Return the top tracks for multiple artists
+  getArtistsTopTracks(unpopularArtists) {
+    var promises = [];
+    unpopularArtists.map((artist, i) => {
+      promises.push(spotifyApi.getArtistTopTracks(artist.id, 'US'));
+    })
+    return Promise.all(promises)
+  }
 
-  //     var promises = [];
-  //     unpopularArtists.map((data,i) => { //loop though something
-  //       //call the asynchronous method and store the promise
-  //       promises.push(data); 
-  //     })
-  //     return Promise.all(promises)
-  //   })
-  //   .then((response) => {
-  //     return this.setState({recommendations: response})
-  //   })
-  // }
+  // Return the top track from multiple artists top tracks
+  getTopTrackFromArtistsTopTracks(artistsTopTracks) {
+    var artistsTopTrack = []
+    artistsTopTracks.forEach(function (artistTopTracks) {
+      if (artistTopTracks.tracks.length > 0) {
+        artistsTopTrack.push(artistTopTracks.tracks[0])
+      }
+    });
+    return artistsTopTrack
+  }
+
+  getUsersTopGenres() {
+    return spotifyApi.getMyTopArtists({ limit: 1 })
+      .then((response) => {
+        var topArtists = JSON.parse(JSON.stringify(response)).items[0].genres
+        if (topArtists.length >= 5) {
+          topArtists.length = 5
+        }
+        return topArtists
+      })
+  }
+
+
+  updateRecommendations() {
+    this.getUsersTopTrack('short_term')
+      .then((response) => {
+        var uniqueArtists = this.getArtistsFromRecommendations(JSON.parse(JSON.stringify(response)).tracks)
+        return spotifyApi.getArtists(uniqueArtists)
+      })
+      .then((response) => {
+        var unpopularArtists = this.getUnpopularArtists(JSON.parse(JSON.stringify(response)), this.state.maxPopularity)
+        return this.getArtistsTopTracks(unpopularArtists)
+      })
+      .then((response) => {
+        var recommendations = this.getTopTrackFromArtistsTopTracks(response)
+        this.setState({ recommendations: recommendations })
+      })
+  }
 
   componentDidMount() {
-    spotifyApi.getMyTopTracks({time_range: 'short_term'})
-    .then((response) => {
-      return spotifyApi.getRecommendations({seed_genres: 'indie,indie-pop,folk', max_popularity: '10', limit: 100})
-    })
-    .then((response) => {
-      this.setState({recommendations: JSON.parse(JSON.stringify(response)).tracks})
-      var artistIdList = []
-      this.state.recommendations.forEach(function(object) {
-        artistIdList.push(object.artists[0].id)
-      });
-  
-      let unique = [...new Set(artistIdList)];
-      unique.length=50
-
-      return spotifyApi.getArtists(unique)
-    })
-    .then((response) => {
-      var artistList = JSON.parse(JSON.stringify(response))
-      var unpopularArtists = []
-      artistList.artists.forEach(function(artist) {
-        if (artist.popularity < 50) {
-          unpopularArtists.push(artist)
-        }
-      });
-
-      var promises = [];
-      unpopularArtists.map((data,i) => { //loop though something
-        //call the asynchronous method and store the promise
-        promises.push(spotifyApi.getArtistTopTracks(data.id, 'US')); 
-      })
-      return Promise.all(promises)
-    })
-    .then((response) => {
-      var newRecommendations = []
-      response.forEach(function(object) {
-        if (typeof object.tracks != undefined) {
-          newRecommendations.push(object.tracks[0])
-        }
-      });
-      console.log(newRecommendations)
-      this.setState({recommendations: newRecommendations})
-    })
+    this.updateRecommendations()
   }
-
 
   render() {
     return (
       <div className="App">
-      { !this.state.loggedIn &&
-        <a href='http://localhost:8888' > Login to Spotify </a>
-      }
-      { this.state.loggedIn &&
-        <div>
-          <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist(this.state.recommendations)}>
-            Add to Playlist
-          </button>
-          <Recommendations recommendations={this.state.recommendations}/>
-        </div>
-      }
+        {!this.state.loggedIn &&
+          <a href='http://localhost:8888' > Login to Spotify </a>
+        }
+        {this.state.loggedIn &&
+          <div>
+            <form>
+              <label for="customRange1"><h3>Max Artist Popularity: {this.state.maxPopularity}</h3></label>
+              <input style={{marginLeft:'50px', width:'400px'}} type="range" class="custom-range" id="customRange1" onChange={this.handleChange}></input>
+            </form>
+            <br></br>
+            <button type="button" className="btn btn-primary" onClick={() => this.updateRecommendations()}>
+              Get New Recommendations
+            </button>
+              <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist('4oIlq0CsjISPnaQ03nXqoh', this.state.recommendations)}>
+                Add to Playlist
+            </button>
+            <Recommendations recommendations={this.state.recommendations} />
+          </div>
+        }
       </div>
     );
   }
