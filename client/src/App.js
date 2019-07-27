@@ -4,6 +4,9 @@ import './App.css';
 
 import SpotifyWebApi from 'spotify-web-api-js';
 import { unwatchFile } from 'fs';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import Genres from './components/genres';
+
 const spotifyApi = new SpotifyWebApi();
 
 class App extends Component {
@@ -19,14 +22,159 @@ class App extends Component {
       recommendations: [],
       topTracks: [],
       topArtists: [],
-      maxPopularity: 50
+      maxPopularity: 50,
+      availableGenres: [
+        "acoustic",
+        "afrobeat",
+        "alt-rock",
+        "alternative",
+        "ambient",
+        "anime",
+        "black-metal",
+        "bluegrass",
+        "blues",
+        "bossanova",
+        "brazil",
+        "breakbeat",
+        "british",
+        "cantopop",
+        "chicago-house",
+        "children",
+        "chill",
+        "classical",
+        "club",
+        "comedy",
+        "country",
+        "dance",
+        "dancehall",
+        "death-metal",
+        "deep-house",
+        "detroit-techno",
+        "disco",
+        "disney",
+        "drum-and-bass",
+        "dub",
+        "dubstep",
+        "edm",
+        "electro",
+        "electronic",
+        "emo",
+        "folk",
+        "forro",
+        "french",
+        "funk",
+        "garage",
+        "german",
+        "gospel",
+        "goth",
+        "grindcore",
+        "groove",
+        "grunge",
+        "guitar",
+        "happy",
+        "hard-rock",
+        "hardcore",
+        "hardstyle",
+        "heavy-metal",
+        "hip-hop",
+        "holidays",
+        "honky-tonk",
+        "house",
+        "idm",
+        "indian",
+        "indie",
+        "indie-pop",
+        "industrial",
+        "iranian",
+        "j-dance",
+        "j-idol",
+        "j-pop",
+        "j-rock",
+        "jazz",
+        "k-pop",
+        "kids",
+        "latin",
+        "latino",
+        "malay",
+        "mandopop",
+        "metal",
+        "metal-misc",
+        "metalcore",
+        "minimal-techno",
+        "movies",
+        "mpb",
+        "new-age",
+        "new-release",
+        "opera",
+        "pagode",
+        "party",
+        "philippines-opm",
+        "piano",
+        "pop",
+        "pop-film",
+        "post-dubstep",
+        "power-pop",
+        "progressive-house",
+        "psych-rock",
+        "punk",
+        "punk-rock",
+        "r-n-b",
+        "rainy-day",
+        "reggae",
+        "reggaeton",
+        "road-trip",
+        "rock",
+        "rock-n-roll",
+        "rockabilly",
+        "romance",
+        "sad",
+        "salsa",
+        "samba",
+        "sertanejo",
+        "show-tunes",
+        "singer-songwriter",
+        "ska",
+        "sleep",
+        "songwriter",
+        "soul",
+        "soundtracks",
+        "spanish",
+        "study",
+        "summer",
+        "swedish",
+        "synth-pop",
+        "tango",
+        "techno",
+        "trance",
+        "trip-hop",
+        "turkish",
+        "work-out",
+        "world-music"],
+      selectedGenres: []
     }
     this.handleChange = this.handleChange.bind(this);
+    this.onGenreCheck = this.onGenreCheck.bind(this)
   }
 
   handleChange(event) {
-    this.setState({maxPopularity: event.target.value});
+    this.setState({ maxPopularity: event.target.value });
   }
+
+  onGenreCheck(event){
+    if (this.state.selectedGenres.length > 4) {
+      event.target.checked = false
+    }
+    if (event.target.checked) {
+      this.setState({
+        selectedGenres: [...this.state.selectedGenres, event.target.id]
+      })
+    } else {
+      this.setState({
+        selectedGenres: this.state.selectedGenres.filter((_, i) => i !== this.state.selectedGenres.indexOf(event.target.id))
+      });
+    }
+  }
+
 
   getHashParams() {
     var hashParams = {};
@@ -60,6 +208,12 @@ class App extends Component {
       });
   }
 
+
+  getSelectedGenres() {
+    return this.state.selectedGenres.join(',')
+  }
+
+
   // Returns track recommendations from genres
   getUsersTopTrack(time_range) {
     // return this.getUsersTopGenres()
@@ -70,7 +224,7 @@ class App extends Component {
     //   console.log(response.join(','))
     //   return spotifyApi.getRecommendations({ seed_genres: response.join(','), max_popularity: '10', limit: 50 });
     // })
-    return spotifyApi.getRecommendations({ seed_genres: 'indie,indie-pop,folk', max_popularity: this.state.maxPopularity, limit: 50 });
+    return spotifyApi.getRecommendations({ seed_genres: this.getSelectedGenres(), max_popularity: this.state.maxPopularity, limit: 50 });
   }
 
   getArtistsFromRecommendations(recommendations) {
@@ -153,16 +307,17 @@ class App extends Component {
         }
         {this.state.loggedIn &&
           <div>
+          <Genres genres={this.state.availableGenres} handleGenreCheck={this.onGenreCheck} />  
             <form>
               <label for="customRange1"><h3>Max Artist Popularity: {this.state.maxPopularity}</h3></label>
-              <input style={{marginLeft:'50px', width:'400px'}} type="range" class="custom-range" id="customRange1" onChange={this.handleChange}></input>
+              <input style={{ marginLeft: '50px', width: '400px' }} type="range" class="custom-range" id="customRange1" onChange={this.handleChange}></input>
             </form>
             <br></br>
-            <button type="button" className="btn btn-primary" onClick={() => this.updateRecommendations()}>
+            <button style={{marginRight: "200px"}}type="button" className="btn btn-primary" onClick={() => this.updateRecommendations()}>
               Get New Recommendations
             </button>
-              <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist('4oIlq0CsjISPnaQ03nXqoh', this.state.recommendations)}>
-                Add to Playlist
+            <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist('4oIlq0CsjISPnaQ03nXqoh', this.state.recommendations)}>
+              Add to Playlist
             </button>
             <Recommendations recommendations={this.state.recommendations} />
           </div>
