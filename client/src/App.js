@@ -13,7 +13,6 @@ class App extends Component {
   constructor() {
     super();
     const params = this.getHashParams();
-    console.log(params)
     const token = params.access_token;
     if (token) {
       spotifyApi.setAccessToken(token);
@@ -187,8 +186,6 @@ class App extends Component {
     var hashParams = {};
     var e, r = /([^&;=]+)=?([^&;]*)/g,
       q = window.location.hash.substring(1);
-    console.log('sdasdas')
-    console.log(q)
     e = r.exec(q)
     while (e) {
       hashParams[e[1]] = decodeURIComponent(e[2]);
@@ -209,7 +206,6 @@ class App extends Component {
     return trackUris
   }
 
-  //4oIlq0CsjISPnaQ03nXqoh
   // Replace all the existing tracks in the playlist with the new recommendations
   replacePlaylist(playlist, recommendations) {
     spotifyApi.replaceTracksInPlaylist(playlist, this.getTrackUris(recommendations))
@@ -230,17 +226,12 @@ class App extends Component {
 
 
   // Returns track recommendations from genres
-  getUsersTopTrack(time_range) {
-    // return this.getUsersTopGenres()
-    // .then((response) => {
-    //   return response
-    // })
-    // .then((response) => {
-    //   console.log(response.join(','))
-    //   return spotifyApi.getRecommendations({ seed_genres: response.join(','), max_popularity: '10', limit: 50 });
-    // })
-    //5yJt5MyHibvYTXqiCUOvRM
-    return spotifyApi.getRecommendations({ seed_genres: this.getSelectedGenres(), max_popularity: this.state.maxPopularity, limit: 50 });
+  getRecommendationsFromGenres() {
+    var promises = []
+    for (var i=0; i<5; i++) {
+      promises.push(spotifyApi.getRecommendations({ seed_genres: this.getSelectedGenres(), max_popularity: 100, limit: 100 }));
+    }
+    return Promise.all(promises)
   }
 
   getArtistsFromRecommendations(recommendations) {
@@ -254,12 +245,14 @@ class App extends Component {
 
   // Get list of artists with popularity less than the popularity variable
   getUnpopularArtists(artists, popularity) {
+    const numberOfRecommendations = 30;
     var unpopularArtists = []
-    artists.artists.forEach(function (artist) {
+    artists.forEach(function (artist) {
       if (artist.popularity < popularity) {
         unpopularArtists.push(artist)
       }
     });
+    unpopularArtists.length = numberOfRecommendations
     return unpopularArtists
   }
 
@@ -294,15 +287,24 @@ class App extends Component {
       })
   }
 
+  getArtists(artists){
+    var promises = []
+    var i, j, temparray, chunk = 50;
+    for (i = 0, j = artists.length; i < j; i += chunk) {
+      temparray = artists.slice(i, i + chunk);
+      promises.push(spotifyApi.getArtists(temparray))
+    }
+    return Promise.all(promises)
+  }
 
   updateRecommendations() {
-    this.getUsersTopTrack('short_term')
+    this.getRecommendationsFromGenres()
       .then((response) => {
-        var uniqueArtists = this.getArtistsFromRecommendations(JSON.parse(JSON.stringify(response)).tracks)
-        return spotifyApi.getArtists(uniqueArtists)
+        var uniqueArtists = this.getArtistsFromRecommendations(JSON.parse(JSON.stringify(this.flatten(response, 'tracks'))))
+        return this.getArtists(uniqueArtists)
       })
       .then((response) => {
-        var unpopularArtists = this.getUnpopularArtists(JSON.parse(JSON.stringify(response)), this.state.maxPopularity)
+        var unpopularArtists = this.getUnpopularArtists(JSON.parse(JSON.stringify(this.flatten(response, 'artists'))), this.state.maxPopularity)
         return this.getArtistsTopTracks(unpopularArtists)
       })
       .then((response) => {
@@ -311,10 +313,21 @@ class App extends Component {
       })
   }
 
+  flatten(object, type){
+    var flat = [];
+    for (var i = 0; i < object.length; i++) {
+      if (type == 'tracks') {
+        flat = flat.concat(object[i].tracks);
+      } else {
+        flat = flat.concat(object[i].artists);
+      }
+    }
+    return flat
+  }
+
   getUsersPlaylist() {
     spotifyApi.getUserPlaylists()
     .then((response) => {
-      console.log(response)
     })
   }
 
