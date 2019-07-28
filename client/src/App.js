@@ -238,13 +238,6 @@ class App extends Component {
       });
   }
 
-  createPlaylist(playlist) {
-    spotifyApi.createPlaylist('joevg95', {name: 'Undiscovered Weekly'})
-    .then((response) => {
-    })
-  }
-
-
   getSelectedGenres() {
     return this.state.selectedGenres.join(',')
   }
@@ -359,9 +352,11 @@ class App extends Component {
   componentDidMount() {
   
     // Set token
+    console.log(hash)
     let _token = hash.access_token;
     if (_token) {
       spotifyApi.setAccessToken(_token);
+      spotifyApi.getUser
       // Set token
       this.setState({
         token: _token
