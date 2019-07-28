@@ -4,8 +4,8 @@ import './App.css';
 
 import SpotifyWebApi from 'spotify-web-api-js';
 import { unwatchFile } from 'fs';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import Genres from './components/genres';
+import Playlists from './components/playlists';
 
 const spotifyApi = new SpotifyWebApi();
 
@@ -13,6 +13,7 @@ class App extends Component {
   constructor() {
     super();
     const params = this.getHashParams();
+    console.log(params)
     const token = params.access_token;
     if (token) {
       spotifyApi.setAccessToken(token);
@@ -23,6 +24,7 @@ class App extends Component {
       topTracks: [],
       topArtists: [],
       maxPopularity: 50,
+      chosenPlaylist: "",
       availableGenres: [
         "acoustic",
         "afrobeat",
@@ -153,7 +155,8 @@ class App extends Component {
       selectedGenres: []
     }
     this.handleChange = this.handleChange.bind(this);
-    this.onGenreCheck = this.onGenreCheck.bind(this)
+    this.onGenreCheck = this.onGenreCheck.bind(this);
+    this.onPlaylistSelect = this.onPlaylistSelect.bind(this);
   }
 
   handleChange(event) {
@@ -175,11 +178,17 @@ class App extends Component {
     }
   }
 
+  onPlaylistSelect(event) {
+    this.setState({ chosenPlaylist: event.target.options[event.target.selectedIndex].id });
+  }
+
 
   getHashParams() {
     var hashParams = {};
     var e, r = /([^&;=]+)=?([^&;]*)/g,
       q = window.location.hash.substring(1);
+    console.log('sdasdas')
+    console.log(q)
     e = r.exec(q)
     while (e) {
       hashParams[e[1]] = decodeURIComponent(e[2]);
@@ -208,6 +217,12 @@ class App extends Component {
       });
   }
 
+  createPlaylist(playlist) {
+    spotifyApi.createPlaylist('joevg95', {name: 'Undiscovered Weekly'})
+    .then((response) => {
+    })
+  }
+
 
   getSelectedGenres() {
     return this.state.selectedGenres.join(',')
@@ -224,6 +239,7 @@ class App extends Component {
     //   console.log(response.join(','))
     //   return spotifyApi.getRecommendations({ seed_genres: response.join(','), max_popularity: '10', limit: 50 });
     // })
+    //5yJt5MyHibvYTXqiCUOvRM
     return spotifyApi.getRecommendations({ seed_genres: this.getSelectedGenres(), max_popularity: this.state.maxPopularity, limit: 50 });
   }
 
@@ -295,6 +311,13 @@ class App extends Component {
       })
   }
 
+  getUsersPlaylist() {
+    spotifyApi.getUserPlaylists()
+    .then((response) => {
+      console.log(response)
+    })
+  }
+
   componentDidMount() {
     this.updateRecommendations()
   }
@@ -307,7 +330,8 @@ class App extends Component {
         }
         {this.state.loggedIn &&
           <div>
-          <Genres genres={this.state.availableGenres} handleGenreCheck={this.onGenreCheck} />  
+            <Genres genres={this.state.availableGenres} handleGenreCheck={this.onGenreCheck} />
+            <Playlists spotifyApi={spotifyApi} onPlaylistSelect={this.onPlaylistSelect}/>
             <form>
               <label for="customRange1"><h3>Max Artist Popularity: {this.state.maxPopularity}</h3></label>
               <input style={{ marginLeft: '50px', width: '400px' }} type="range" class="custom-range" id="customRange1" onChange={this.handleChange}></input>
@@ -316,8 +340,11 @@ class App extends Component {
             <button style={{marginRight: "200px"}}type="button" className="btn btn-primary" onClick={() => this.updateRecommendations()}>
               Get New Recommendations
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist('4oIlq0CsjISPnaQ03nXqoh', this.state.recommendations)}>
+            <button type="button" className="btn btn-primary" onClick={() => this.replacePlaylist(this.state.chosenPlaylist, this.state.recommendations)}>
               Add to Playlist
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => this.getUsersPlaylist()}>
+            Create Playlist
             </button>
             <Recommendations recommendations={this.state.recommendations} />
           </div>
