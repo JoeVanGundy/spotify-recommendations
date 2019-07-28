@@ -3,21 +3,46 @@ import Recommendations from './components/recommendations'
 import './App.css';
 
 import SpotifyWebApi from 'spotify-web-api-js';
-import { unwatchFile } from 'fs';
 import Genres from './components/genres';
 import Playlists from './components/playlists';
 
 const spotifyApi = new SpotifyWebApi();
+
+export const authEndpoint = 'https://accounts.spotify.com/authorize';
+
+// Replace with your app's client ID, redirect URI and desired scopes
+const clientId = "670b1531e1d74e8c97c3c81aaa6fc9b0";
+const redirectUri = "http://localhost:3000";
+const scopes = [
+  "user-read-private", 
+  "user-read-email",
+  "user-read-playback-state", 
+  "user-top-read", 
+  "playlist-modify-public"
+];
+
+// Get the hash of the url
+const hash = window.location.hash
+  .substring(1)
+  .split("&")
+  .reduce(function (initial, item) {
+    if (item) {
+      var parts = item.split("=");
+      initial[parts[0]] = decodeURIComponent(parts[1]);
+    }
+    return initial;
+  }, {});
+
+window.location.hash = "";
+
 
 class App extends Component {
   constructor() {
     super();
     const params = this.getHashParams();
     const token = params.access_token;
-    if (token) {
-      spotifyApi.setAccessToken(token);
-    }
     this.state = {
+      token: null,
       loggedIn: token ? true : false,
       recommendations: [],
       topTracks: [],
@@ -332,16 +357,27 @@ class App extends Component {
   }
 
   componentDidMount() {
-    this.updateRecommendations()
+  
+    // Set token
+    let _token = hash.access_token;
+    if (_token) {
+      spotifyApi.setAccessToken(_token);
+      // Set token
+      this.setState({
+        token: _token
+      });
+    }
   }
 
   render() {
     return (
       <div className="App">
-        {!this.state.loggedIn &&
-          <a href='http://localhost:8888' > Login to Spotify </a>
+        {!this.state.token &&
+          <a className="btn btn--login App-link" href={`${authEndpoint}?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes.join("%20")}&response_type=token&show_dialog=true`}>
+            Login to Spotify
+          </a>
         }
-        {this.state.loggedIn &&
+        {this.state.token &&
           <div>
             <Genres genres={this.state.availableGenres} handleGenreCheck={this.onGenreCheck} />
             <Playlists spotifyApi={spotifyApi} onPlaylistSelect={this.onPlaylistSelect}/>
